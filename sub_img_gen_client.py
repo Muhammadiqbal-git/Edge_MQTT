@@ -1,13 +1,15 @@
-import sys
 from paho.mqtt import client as mqtt_client
 from PIL import Image
 import io
+import os
+import random
+import time
 
 broker_address = '192.168.100.2'
 port = 1883
 topic = [('edge/cam/1', 0), ('edge/cam/2', 0)]
 
-client_id = 'edge_1'
+client_id = 'img_gen_1'
 
 
 def connect_mqtt() -> mqtt_client:
@@ -21,6 +23,12 @@ def connect_mqtt() -> mqtt_client:
     client.connect(broker_address, port)
     return client
 
+def get_dir():
+    target_dir = os.path.join('.', 'img')
+    if not os.path.isdir(target_dir):
+        os.mkdir(target_dir)
+    return target_dir
+
 def subscribe_mqtt(client: mqtt_client):
     def on_message(client, userdata, msg):
         print("Recieved data from {} topic".format(msg.topic))
@@ -28,16 +36,20 @@ def subscribe_mqtt(client: mqtt_client):
             print("Recieved from first topic")
         print("Data : {}".format(msg.payload))
         print("Lenght : {}".format(len(msg.payload)))
-        tes = io.BytesIO(msg.payload)
-        im = Image.open(tes)
-        print(im)
-        im.show()
-
-
+        img_data = io.BytesIO(msg.payload)
+        t_dir = get_dir()
+        img_name = "1212_{}.jpeg".format(random.randint(1111, 9999))
+        img_path = os.path.join(t_dir, img_name)
+        im = Image.open(img_data)
+        im.save(img_path)
+        if os.path.exists(img_path):
+            print(img_name, "saved succesfully")
     client.subscribe(topic)
     client.on_message = on_message
 
 def run():
+    print("Subscriber img data generator running....")
+    get_dir()
     client = connect_mqtt()
     subscribe_mqtt(client)
     client.loop_forever()

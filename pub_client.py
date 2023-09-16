@@ -4,7 +4,7 @@ from paho.mqtt import client as mqtt_client
 
 broker_address = '192.168.100.2'
 port = 1883
-topic = 'edge/cam/1'
+topic = 'edge/cam/2'
 
 client_id = 'cam_1'
 
