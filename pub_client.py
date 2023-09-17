@@ -30,7 +30,7 @@ def publish(client, msg):
 def run():
     client = connect_mqtt()
     client.loop_start()
-    data = 'data test'
+    data = 'data dari lepi yg berbeda'
     publish(client, data)
     client.loop_stop()
 
