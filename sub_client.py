@@ -1,12 +1,15 @@
 import sys
-from firebase_admin import credentials, initialize_app, storage
-from paho.mqtt import client as mqtt_client
-from PIL import Image, ImageDraw
 import io
 import tensorflow as tf
 import os
+import asyncio
 from models import decoder, prediction_head
 from utils import data_utils
+from firebase_admin import credentials, initialize_app, storage
+from paho.mqtt import client as mqtt_client
+from PIL import Image, ImageDraw
+from telegram import Bot
+from telegram.ext import MessageHandler, ContextTypes
 
 broker_address = '192.168.100.2'
 port = 1883
@@ -15,9 +18,9 @@ topic = [('edge/cam/1', 0), ('edge/cam/2', 0)]
 client_id = 'edge_1'
 
 cred = credentials.Certificate(os.getenv("GOOGLE_APPLICATION_CREDENTIALS")) # add your Credentials keys path to sys environtment
-
-image_path = "D:\\1.Skripsi\\Edge\\img\\2023-07-28_1614.jpeg"
-data = data_utils.single_custom_data_gen(image_path, 300, 300)
+image_path = "D:\\1.Skripsi\\Edge\\img\\2023-07-28_4473.jpeg"
+with open("telegram_key.txt") as f:
+    token = f.readline()
 
 
 def model_init() -> tf.keras.Model:
@@ -86,6 +89,13 @@ def infer_draw_predictions(imgs, pred_bboxes, pred_labels, pred_scores, labels):
     denormalized_bboxes = denormalize_bboxes(pred_bboxes, img_size, img_size)
     draw_bboxes_with_labels(imgs, denormalized_bboxes, pred_labels, pred_scores, labels)
 
+def send_photo_telegram(imgs, caption):
+    bot = Bot(token=token)
+    print("sending..")
+    caption = "test"
+    bot.send_message(text="asdasd")
+    bot.send_photo(photo=imgs, caption=caption)
+
 
 def connect_mqtt() -> mqtt_client:
     def on_connect(client, userdata, flags, rc):
@@ -98,7 +108,7 @@ def connect_mqtt() -> mqtt_client:
     client.connect(broker_address, port)
     return client
 
-def subscribe_mqtt(client: mqtt_client, ssd_model: tf.keras.Model):
+def subscribe_mqtt(client: mqtt_client, ssd_model: tf.keras.Model, jj):
     def on_message(client, userdata, msg):
         print("Recieved data from {} topic".format(msg.topic))
         if (msg.topic == 'edge/cam/1'):
@@ -106,19 +116,23 @@ def subscribe_mqtt(client: mqtt_client, ssd_model: tf.keras.Model):
         print("Data : {}".format(msg.payload))
         print("Lenght : {}".format(len(msg.payload)))
         tes = io.BytesIO(msg.payload)
-        im = Image.open(tes)
-        print(im)
-        im.show()
+        data = data_utils.single_custom_data_gen(image_path, 300, 300)
+        send_photo_telegram(image_path, "test")
+        p_bbox, p_scores, p_labels = ssd_model.predict(data)
+        p_bbox = tf.squeeze(p_bbox)
+        p_scores = tf.squeeze(p_scores)
+        p_labels = tf.squeeze(p_labels)
+        print(any(i >= 0.8 for i in p_scores))
 
 
     client.subscribe(topic)
     client.on_message = on_message
 
-def run():
+def main():
     model = model_init()
     client = connect_mqtt()
-    subscribe_mqtt(client, model)
+    subscribe_mqtt(client, model, False)
     client.loop_forever()
 
 if __name__ == '__main__':
-    run()
+    asyncio.run(main())
