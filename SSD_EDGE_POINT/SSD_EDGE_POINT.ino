@@ -63,11 +63,11 @@ const char* NTPSERVER = "pool.ntp.org";
 const int dayOffset_sec = 3600;
 
 // WIFI
-const char *ssid = "??????";
-const char *pass = "123321123321";
+const char *ssid = "Yfi";
+const char *pass = "qweasdzxc21";
 
 // MQTT BROKER
-const char *broker_address = "192.168.100.2";
+const char *broker_address = "192.168.51.119";
 const int port = 1883;
 const char *topicTime = "edge/cam/1/time";
 const char *topicProgress = "edge/cam/1/inprogress";
@@ -123,7 +123,7 @@ void setup() {
     WiFi.begin(ssid, pass);
     Serial.println("Connecting to wifi");
     while (WiFi.status() != WL_CONNECTED) {
-      delay(500);
+      delay(200);
       Serial.print(".");
     }
     Serial.println();
@@ -154,9 +154,10 @@ void setup() {
             continue;
           }
           delay(200);
-          String timeNow = getTimeNow();
+          // GET TIME USING NTP SERVER
+          //          String timeNow = getTimeNow();
+          String timeNow = "img_gen_mode";
           Serial.println("asd");
-
           if (!fb) {
             Serial.println("Camera capture failed");
             delay(1000);
