@@ -122,8 +122,6 @@ def subscribe_mqtt(client: mqtt_client, ssd_model: tf.keras.Model, jj):
     def on_message(client, userdata, msg):
         print("Recieved data from {} topic".format(msg.topic))
         print("Lenght : {}".format(len(msg.payload)))
-        if (msg.topic == 'edge/cam/1'):
-            print("Recieved from first topic")
         if(msg.topic == topic[0][0]):
             time_sent.append(msg.payload.decode())
             print(f"The time is ... {time_sent}")
