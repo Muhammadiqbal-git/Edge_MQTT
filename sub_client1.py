@@ -14,7 +14,7 @@ from telegram import Bot
 from telegram.ext import MessageHandler, ContextTypes
 
 
-broker_address = '192.168.100.2'
+broker_address = '192.168.72.119'
 port = 1883
 topic = [('edge/cam/1/time', 0), ('edge/cam/1/inprogress', 0), ('edge/cam/1/done', 0)]
 LABELS = ['BG', 'Face']

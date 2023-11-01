@@ -7,11 +7,11 @@ from PIL import Image, ImageFile
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-broker_address = '192.168.253.119'
+broker_address = '192.168.72.119'
 port = 1883
-topic = [('edge/cam/1/time', 0), ('edge/cam/1/inprogress', 0), ('edge/cam/1/done', 0)]
+topic = [('edge/cam/2/time', 0), ('edge/cam/2/inprogress', 0), ('edge/cam/2/done', 0)]
 
-client_id = 'img_gen_1'
+client_id = 'img_gen_2'
 
 data = []
 
@@ -29,7 +29,7 @@ def connect_mqtt() -> mqtt_client:
 
 
 def get_dir():
-    target_dir = os.path.join('.', 'img')
+    target_dir = os.path.join('.', 'img_2')
     if not os.path.isdir(target_dir):
         os.mkdir(target_dir)
     return target_dir
@@ -40,7 +40,7 @@ def subscribe_mqtt(client: mqtt_client):
     time_sent = []
     def on_message(client, userdata, msg):
         print("Recieved data from {} topic".format(msg.topic))
-        if (msg.topic == 'edge/cam/1'):
+        if (msg.topic == 'edge/cam/2*'):
             print("Recieved from first topic")
         # print("Data : {}".format(msg.payload))
         print("Lenght : {}".format(len(msg.payload)))
@@ -83,7 +83,7 @@ def subscribe_mqtt(client: mqtt_client):
 
 
 def run():
-    print("Subscriber img data generator running....")
+    print("Subscriber with id {} is running....".format(client_id))
     get_dir()
     client = connect_mqtt()
     subscribe_mqtt(client)

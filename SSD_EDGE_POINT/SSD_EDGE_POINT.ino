@@ -1,26 +1,13 @@
 /*
-  Deep Sleep with External Wake Up
-  =====================================
-  This code displays how to use deep sleep with
-  an external trigger as a wake up source and how
-  to store data in RTC memory to use it over reboots
-
-  This code is under Public Domain License.
-
-  Hardware Connections
-  ======================
-  Push Button to GPIO 33 pulled down with a 10K Ohm
-  resistor
-
   NOTE:
   ======
   Only RTC IO can be used as a source for external wake
   source. They are pins: 0,2,4,12-15,25-27,32-39.
-
-  Author:
-  Pranav Cherukupalli <cherukupallip@gmail.com>
 */
 #include "esp_camera.h"
+#include <esp_pm.h>
+#include <esp_wifi.h>
+#include <esp_wifi_types.h>
 #include <Arduino.h>
 #include "driver/rtc_io.h"
 #include <WiFi.h>
@@ -30,9 +17,6 @@
 //#include <ArduinoJson.h>
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
-
-
-RTC_DATA_ATTR int bootCount = 0;
 
 // CAMERA
 #define CAMERA_MODEL_AI_THINKER
@@ -67,7 +51,7 @@ const char *ssid = "Yfi";
 const char *pass = "qweasdzxc21";
 
 // MQTT BROKER
-const char *broker_address = "192.168.51.119";
+const char *broker_address = "192.168.72.119";
 const int port = 1883;
 const char *topicTime = "edge/cam/1/time";
 const char *topicProgress = "edge/cam/1/inprogress";
@@ -107,123 +91,26 @@ void print_wakeup_reason() {
 void setup() {
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
   Serial.begin(115200);
-  delay(500); //Take some time to open up the Serial Monitor
-  WiFi.disconnect();
+  delay(1000); //Take some time to open up the Serial Monitor
+  Serial.println("Connecting to wifi");
+  WiFi.begin(ssid, pass);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(200);
+    Serial.print(".");
+  }
+  Serial.println();
+  esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
   //Increment boot number and print it every reboot
-  ++bootCount;
-  Serial.println("Boot number: " + String(bootCount));
 
   //Print the wakeup reason for ESP32
   print_wakeup_reason();
   pinMode(GPIO_NUM_13, INPUT_PULLUP);
   setup_camera();
+  configTime(0, dayOffset_sec, NTPSERVER);
+  setenv("TZ", "WIB-7", 1);
+  tzset();
+  Serial.println("Setup done");
 
-
-  if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0) {
-    WiFi.begin(ssid, pass);
-    Serial.println("Connecting to wifi");
-    while (WiFi.status() != WL_CONNECTED) {
-      delay(200);
-      Serial.print(".");
-    }
-    Serial.println();
-
-    String client_id = "esp32-client-";
-    client.setServer(broker_address, port);
-    delay(100);
-
-    while (!client.connected()) {
-      client_id += String(WiFi.macAddress());
-      Serial.println("Client connect to " + client_id);
-      configTime(0, dayOffset_sec, NTPSERVER);
-      setenv("TZ", "WIB-7", 1);
-      tzset();
-      if (client.connect(client_id.c_str())) {
-        Serial.println("Client Connected");
-        //        client.publish(topic, (const char*)fb->buf);
-
-        Serial.println("tt");
-        // CHANGE THE FOR CONDITION TO INCREASE IMAGE TAKEN
-        for (int i = 0; i <= 11; i++) {
-          pinMode(4, OUTPUT);
-          digitalWrite(4, LOW);
-          camera_fb_t *fb = NULL;
-          fb = esp_camera_fb_get();
-          if (i <= 5) {
-            esp_camera_fb_return(fb);
-            continue;
-          }
-          delay(200);
-          // GET TIME USING NTP SERVER
-          //          String timeNow = getTimeNow();
-          String timeNow = "img_gen_mode";
-          Serial.println("asd");
-          if (!fb) {
-            Serial.println("Camera capture failed");
-            delay(1000);
-            ESP.restart();
-          }
-
-          client.setBufferSize(4096 + 60);
-          byte s_array[4100];
-          Vector<byte> vector(s_array);
-          Serial.println("properties img =====");
-          Serial.println(fb->len);
-          Serial.println(fb->width);
-          Serial.println(fb->height);
-          Serial.println("======");
-          if (client.publish(topicTime, timeNow.c_str())) {
-            Serial.println("time published");
-            Serial.println("====");
-            delay(200);
-          }
-          //        if (client.publish(topicDone, fb->buf, fb->len)) {
-          //          Serial.println("published");
-          //          delay(300);
-          //        }
-
-          for (int j = 0; j < fb->len; j++) {
-            vector.push_back(fb->buf[j]);
-
-            if (j == fb->len - 1) {
-              //            Serial.println(vector.size());
-              if (client.publish(topicDone, vector.data(), vector.size(), false)) {
-                Serial.println("All part of data published");
-              }
-              delay(100);
-              vector.clear();
-            }
-            //           if (j % 128 == 0 && j != 0)
-            else if (j % 4096 == 0 && j != 0) {
-              if (client.publish(topicProgress, vector.data(), vector.size(), false)) {
-                //              Serial.println("Next part of data begin to publish");
-              }
-              delay(100);
-              vector.clear();
-            }
-
-          }
-
-          esp_camera_fb_return(fb);
-          delay(200);
-        }
-      }
-      else {
-        Serial.printf("Failed with state %d \n", client.state());
-        delay(2000);
-      }
-
-    }
-    client.disconnect();
-  }
-
-  //Go to sleep now
-  esp_sleep_enable_ext0_wakeup(GPIO_NUM_13, HIGH); //1 = High, 0 = Low
-  Serial.println("Going to sleep now");
-  delay(2000);
-
-  esp_deep_sleep_start();
-  Serial.println("This will never be printed");
 }
 
 void setup_camera() {
@@ -252,7 +139,7 @@ void setup_camera() {
   // init with high specs to pre-allocate larger buffers
   if (psramFound()) {
     config.frame_size = FRAMESIZE_SVGA;
-    config.jpeg_quality = 6;  //0-63 lower number means higher quality
+    config.jpeg_quality = 7;  //0-63 lower number means higher quality
     config.fb_count = 2;
     config.grab_mode = CAMERA_GRAB_LATEST;
     config.fb_location = CAMERA_FB_IN_PSRAM;
@@ -279,8 +166,8 @@ void setup_camera() {
   s->set_wb_mode(s, 1); // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
   s->set_exposure_ctrl(s, 1); // 0 = disable , 1 = enable
   s->set_aec2(s, 0); // 0 = disable , 1 = enable
-  //  s->set_ae_level(s, 0); // -2 to 2
-  //  s->set_aec_value(s, 400); // 0 to 1200
+  s->set_ae_level(s, -1); // -2 to 2
+  s->set_aec_value(s, 20); // 0 to 1200
   s->set_gain_ctrl(s, 1); // 0 = disable , 1 = enable
   s->set_agc_gain(s, 0); // 0 to 30
   s->set_gainceiling(s, (gainceiling_t)5); // 0 to 6
@@ -300,10 +187,114 @@ void setup_camera() {
   //  s->set_reg(s, 0x42, 0xff, 0x4f); //image quality (lower is bad)
   //  s->set_reg(s, 0x44, 0xff, 1); //quality
   Serial.println("wait config");
-  delay(700);
+  delay(2000);
   Serial.println("continue");
 }
 
 void loop() {
   //This is not going to be called
+  if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0) {
+    while (WiFi.status() != WL_CONNECTED) {
+      Serial.println("Reconnecting..");
+      WiFi.begin(ssid, pass);
+      delay(200);
+      while (WiFi.status() != WL_CONNECTED) {
+        delay(200);
+        Serial.print(".");
+      }
+    }
+    delay(170);
+    Serial.println();
+    String client_id = "esp32-client-";
+    client.setServer(broker_address, port);
+    int err_threshold = 0;
+    while (!client.connected()) {
+      err_threshold++;
+      if (err_threshold == 3) {
+        ESP.restart();
+      }
+      client_id += String(WiFi.macAddress());
+      Serial.println("Client connect to " + client_id);
+
+      if (client.connect(client_id.c_str())) {
+        Serial.println("Client Connected");
+        //        client.publish(topic, (const char*)fb->buf);
+
+        Serial.println("tt");
+        // CHANGE THE FOR CONDITION TO INCREASE IMAGE TAKEN
+        for (int i = 0; i <= 14; i++) {
+          camera_fb_t *fb = NULL;
+          if (i <= 4) {
+            fb = esp_camera_fb_get();
+            esp_camera_fb_return(fb);
+            continue;
+          }
+          //          pinMode(4, OUTPUT);
+          //          digitalWrite(4, HIGH);
+          fb = esp_camera_fb_get();
+          // GET TIME USING NTP SERVER
+          String timeNow = getTimeNow();
+          //          String timeNow = "img_gen_mode";
+          Serial.println("asd");
+          if (!fb) {
+            Serial.println("Camera capture failed");
+            delay(200);
+            ESP.restart();
+          }
+
+          client.setBufferSize(256 + 40);
+          byte s_array[260];
+          Vector<byte> vector(s_array);
+          Serial.println("len of img==");
+          Serial.println(fb->len);
+          Serial.println("==");
+          if (client.publish(topicTime, timeNow.c_str())) {
+            Serial.println("time published");
+            Serial.println("==");
+          }
+          //        if (client.publish(topicDone, fb->buf, fb->len)) {
+          //          Serial.println("published");
+          //          delay(300);
+          //        }
+
+          for (int j = 0; j < fb->len; j++) {
+            vector.push_back(fb->buf[j]);
+            if (j == fb->len - 1) {
+              //            Serial.println(vector.size());
+              if (client.publish(topicDone, vector.data(), vector.size(), false)) {
+                Serial.println("All part of data published");
+              }
+              delay(10);
+              vector.clear();
+            }
+            //           if (j % 128 == 0 && j != 0)
+            else if (j % 256 == 0 && j != 0) {
+              if (client.publish(topicProgress, vector.data(), vector.size(), false)) {
+                //              Serial.println("Next part of data begin to publish");
+              }
+              delay(1);
+              vector.clear();
+            }
+
+          }
+          esp_camera_fb_return(fb);
+          // delay for each image taken
+          delay(150);
+        }
+        //        pinMode(4, OUTPUT);
+        //        digitalWrite(4, LOW);
+      }
+      else {
+        Serial.printf("Failed with state %d \n", client.state());
+        delay(2000);
+      }
+
+    }
+    client.disconnect();
+  }
+  Serial.println("Going to sleep now");
+  // go to sleep
+  esp_sleep_enable_ext0_wakeup(GPIO_NUM_13, HIGH);
+  delay(130);
+  esp_light_sleep_start();
 }

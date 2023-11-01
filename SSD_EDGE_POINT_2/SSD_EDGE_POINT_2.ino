@@ -51,11 +51,11 @@ const char *ssid = "Yfi";
 const char *pass = "qweasdzxc21";
 
 // MQTT BROKER
-const char *broker_address = "192.168.253.119";
+const char *broker_address = "192.168.72.119";
 const int port = 1883;
-const char *topicTime = "edge/cam/1/time";
-const char *topicProgress = "edge/cam/1/inprogress";
-const char *topicDone = "edge/cam/1/done";
+const char *topicTime = "edge/cam/2/time";
+const char *topicProgress = "edge/cam/2/inprogress";
+const char *topicDone = "edge/cam/2/done";
 
 
 WiFiClient espClient;
@@ -139,7 +139,7 @@ void setup_camera() {
   // init with high specs to pre-allocate larger buffers
   if (psramFound()) {
     config.frame_size = FRAMESIZE_SVGA;
-    config.jpeg_quality = 6;  //0-63 lower number means higher quality
+    config.jpeg_quality = 7;  //0-63 lower number means higher quality
     config.fb_count = 2;
     config.grab_mode = CAMERA_GRAB_LATEST;
     config.fb_location = CAMERA_FB_IN_PSRAM;
@@ -166,8 +166,8 @@ void setup_camera() {
   s->set_wb_mode(s, 1); // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
   s->set_exposure_ctrl(s, 1); // 0 = disable , 1 = enable
   s->set_aec2(s, 0); // 0 = disable , 1 = enable
-  //  s->set_ae_level(s, 0); // -2 to 2
-  //  s->set_aec_value(s, 400); // 0 to 1200
+  s->set_ae_level(s, -1); // -2 to 2
+  s->set_aec_value(s, 15); // 0 to 1200
   s->set_gain_ctrl(s, 1); // 0 = disable , 1 = enable
   s->set_agc_gain(s, 0); // 0 to 30
   s->set_gainceiling(s, (gainceiling_t)5); // 0 to 6
@@ -187,7 +187,7 @@ void setup_camera() {
   //  s->set_reg(s, 0x42, 0xff, 0x4f); //image quality (lower is bad)
   //  s->set_reg(s, 0x44, 0xff, 1); //quality
   Serial.println("wait config");
-  delay(1000);
+  delay(2000);
   Serial.println("continue");
 }
 
@@ -223,14 +223,15 @@ void loop() {
         Serial.println("tt");
         // CHANGE THE FOR CONDITION TO INCREASE IMAGE TAKEN
         for (int i = 0; i <= 14; i++) {
-          pinMode(4, OUTPUT);
-          digitalWrite(4, LOW);
           camera_fb_t *fb = NULL;
-          fb = esp_camera_fb_get();
           if (i <= 4) {
+            fb = esp_camera_fb_get();
             esp_camera_fb_return(fb);
             continue;
           }
+          //          pinMode(4, OUTPUT);
+          //          digitalWrite(4, HIGH);
+          fb = esp_camera_fb_get();
           // GET TIME USING NTP SERVER
           String timeNow = getTimeNow();
           //          String timeNow = "img_gen_mode";
@@ -280,6 +281,8 @@ void loop() {
           // delay for each image taken
           delay(150);
         }
+        //        pinMode(4, OUTPUT);
+        //        digitalWrite(4, LOW);
       }
       else {
         Serial.printf("Failed with state %d \n", client.state());
