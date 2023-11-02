@@ -53,9 +53,9 @@ const char *pass = "qweasdzxc21";
 // MQTT BROKER
 const char *broker_address = "192.168.72.119";
 const int port = 1883;
-const char *topicTime = "edge/cam/2/time";
-const char *topicProgress = "edge/cam/2/inprogress";
-const char *topicDone = "edge/cam/2/done";
+const char *topicTime = "edge/cam/1/time";
+const char *topicProgress = "edge/cam/1/inprogress";
+const char *topicDone = "edge/cam/1/done";
 
 
 WiFiClient espClient;
@@ -86,31 +86,6 @@ void print_wakeup_reason() {
     case ESP_SLEEP_WAKEUP_EXT1 : Serial.println("Wakeup caused by external signal using RTC_CNTL"); break;
     default : Serial.printf("Wakeup was not caused by deep sleep: %d\n", wakeup_reason); break;
   }
-}
-
-void setup() {
-  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
-  Serial.begin(115200);
-  delay(1000); //Take some time to open up the Serial Monitor
-  Serial.println("Connecting to wifi");
-  WiFi.begin(ssid, pass);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(200);
-    Serial.print(".");
-  }
-  Serial.println();
-  esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
-  //Increment boot number and print it every reboot
-
-  //Print the wakeup reason for ESP32
-  print_wakeup_reason();
-  pinMode(GPIO_NUM_13, INPUT_PULLUP);
-  setup_camera();
-  configTime(0, dayOffset_sec, NTPSERVER);
-  setenv("TZ", "WIB-7", 1);
-  tzset();
-  Serial.println("Setup done");
-
 }
 
 void setup_camera() {
@@ -191,6 +166,31 @@ void setup_camera() {
   Serial.println("continue");
 }
 
+void setup() {
+  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
+  Serial.begin(115200);
+  delay(1000); //Take some time to open up the Serial Monitor
+  Serial.println("Connecting to wifi");
+  WiFi.begin(ssid, pass);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(200);
+    Serial.print(".");
+  }
+  Serial.println();
+  esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
+  //Increment boot number and print it every reboot
+
+  //Print the wakeup reason for ESP32
+  print_wakeup_reason();
+  pinMode(GPIO_NUM_13, INPUT_PULLUP);
+  setup_camera();
+  configTime(0, dayOffset_sec, NTPSERVER);
+  setenv("TZ", "WIB-7", 1);
+  tzset();
+  Serial.println("Setup done");
+
+}
+
 void loop() {
   //This is not going to be called
   if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0) {
@@ -210,7 +210,7 @@ void loop() {
     int err_threshold = 0;
     while (!client.connected()) {
       err_threshold++;
-      if (err_threshold == 3) {
+      if (err_threshold == 2) {
         ESP.restart();
       }
       client_id += String(WiFi.macAddress());
@@ -218,10 +218,7 @@ void loop() {
 
       if (client.connect(client_id.c_str())) {
         Serial.println("Client Connected");
-        //        client.publish(topic, (const char*)fb->buf);
-
-        Serial.println("tt");
-        // CHANGE THE FOR CONDITION TO INCREASE IMAGE TAKEN
+        // CHANGE THE 'FOR' CONDITION TO INCREASE IMAGE TAKEN
         for (int i = 0; i <= 14; i++) {
           camera_fb_t *fb = NULL;
           if (i <= 4) {
@@ -252,11 +249,6 @@ void loop() {
             Serial.println("time published");
             Serial.println("==");
           }
-          //        if (client.publish(topicDone, fb->buf, fb->len)) {
-          //          Serial.println("published");
-          //          delay(300);
-          //        }
-
           for (int j = 0; j < fb->len; j++) {
             vector.push_back(fb->buf[j]);
             if (j == fb->len - 1) {
