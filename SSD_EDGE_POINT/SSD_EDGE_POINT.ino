@@ -142,7 +142,7 @@ void setup_camera() {
   s->set_exposure_ctrl(s, 1); // 0 = disable , 1 = enable
   s->set_aec2(s, 0); // 0 = disable , 1 = enable
   s->set_ae_level(s, -1); // -2 to 2
-  s->set_aec_value(s, 20); // 0 to 1200
+  s->set_aec_value(s, 17); // 0 to 1200
   s->set_gain_ctrl(s, 1); // 0 = disable , 1 = enable
   s->set_agc_gain(s, 0); // 0 to 30
   s->set_gainceiling(s, (gainceiling_t)5); // 0 to 6
@@ -269,8 +269,9 @@ void loop() {
           }
           esp_camera_fb_return(fb);
           // delay for each image taken
-          delay(850);
+          delay(550);
         }
+        delay(200);
         //        pinMode(4, OUTPUT);
         //        digitalWrite(4, LOW);
       }

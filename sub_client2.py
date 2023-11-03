@@ -17,10 +17,11 @@ from telegram.ext import MessageHandler, ContextTypes
 broker_address = '192.168.72.119'
 port = 1883
 topic = [('edge/cam/2/time', 0), ('edge/cam/2/inprogress', 0), ('edge/cam/2/done', 0)]
-LABELS = ['BG', 'Face']
+LABELS = ['BG', 'Human']
 
 
-client_id = 'edge_1'
+client_id = 'edge_2'
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"]= "d:\keys\cloud-mqtt-detection-firebase-adminsdk-s4wo7-fe9e91fb67.json"
 
 cred = credentials.Certificate(os.getenv("GOOGLE_APPLICATION_CREDENTIALS"))  # add your Credentials keys path to sys environtment
 image_path = "D:\\1.Skripsi\\Edge\\img\\2023-07-28_4473.jpeg"
@@ -33,7 +34,7 @@ base_url = f"https://api.telegram.org/bot{token}/sendPhoto"
 def model_init() -> tf.keras.Model:
     working_dir = os.getcwd()
     model_dir = os.path.join(working_dir, 'model')
-    blob_name = "vgg16_Id-58_2023-10-06.h5"
+    blob_name = "12_2023-11-02_mobilenet_v2_Id-88.h5"
     model_path = os.path.join(model_dir, blob_name)
     if not os.path.exists(model_dir):
         print('no model found, downloading from the internet ...')
@@ -120,8 +121,8 @@ def subscribe_mqtt(client: mqtt_client, ssd_model: tf.keras.Model, jj):
     img = io.BytesIO()
     time_sent = []
     def on_message(client, userdata, msg):
-        print("Recieved data from {} topic".format(msg.topic))
-        print("Lenght : {}".format(len(msg.payload)))
+        # print("Recieved data from {} topic".format(msg.topic))
+        # print("Lenght : {}".format(len(msg.payload)))
         if(msg.topic == topic[0][0]):
             time_sent.append(msg.payload.decode())
             print(f"The time is ... {time_sent}")
@@ -131,8 +132,8 @@ def subscribe_mqtt(client: mqtt_client, ssd_model: tf.keras.Model, jj):
             # data.append(msg.payload)
             img.seek(0, 2)
             img.write(msg.payload)
-            print("inprogress...")
-            print(img.getbuffer().nbytes)
+            # print("inprogress...")
+            # print(img.getbuffer().nbytes)
         elif(msg.topic == topic[2][0]):
             print("===DONE===")
             # data.append(msg.payload)
@@ -141,7 +142,7 @@ def subscribe_mqtt(client: mqtt_client, ssd_model: tf.keras.Model, jj):
             img.seek(0)
             print(img.getbuffer().nbytes)
             print(len(time_sent))
-            data = data_utils.single_custom_data_gen(img, 300, 300)
+            data = data_utils.single_custom_data_gen(img, 500, 500)
             p_bbox, p_scores, p_labels = ssd_model.predict(data)
             data = tf.squeeze(data)
             p_bbox = tf.squeeze(p_bbox)

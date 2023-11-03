@@ -53,9 +53,9 @@ const char *pass = "qweasdzxc21";
 // MQTT BROKER
 const char *broker_address = "192.168.72.119";
 const int port = 1883;
-const char *topicTime = "edge/cam/1/time";
-const char *topicProgress = "edge/cam/1/inprogress";
-const char *topicDone = "edge/cam/1/done";
+const char *topicTime = "edge/cam/2/time";
+const char *topicProgress = "edge/cam/2/inprogress";
+const char *topicDone = "edge/cam/2/done";
 
 
 WiFiClient espClient;
@@ -219,7 +219,7 @@ void loop() {
       if (client.connect(client_id.c_str())) {
         Serial.println("Client Connected");
         // CHANGE THE 'FOR' CONDITION TO INCREASE IMAGE TAKEN
-        for (int i = 0; i <= 14; i++) {
+        for (int i = 0; i <= 6; i++) {
           camera_fb_t *fb = NULL;
           if (i <= 4) {
             fb = esp_camera_fb_get();
@@ -271,7 +271,7 @@ void loop() {
           }
           esp_camera_fb_return(fb);
           // delay for each image taken
-          delay(150);
+          delay(850);
         }
         //        pinMode(4, OUTPUT);
         //        digitalWrite(4, LOW);
