@@ -4,28 +4,28 @@ import tensorflow as tf
 import os
 import asyncio
 import requests
-import json
+import time
 from models import decoder, prediction_head
-from utils import data_utils
+from utils import data_utils, draw_utils
 from firebase_admin import credentials, initialize_app, storage
 from paho.mqtt import client as mqtt_client
 from PIL import Image, ImageDraw
 from telegram import Bot
 from telegram.ext import MessageHandler, ContextTypes
 
+LABELS = ["BG", "Human"]
 
-broker_address = '192.168.72.119'
+ID = 2
+client_id = "edge_{}".format(ID)
+topic = [(f"edge/cam/{ID}/time", 0), (f"edge/cam/{ID}/inprogress", 0), (f"edge/cam/{ID}/done", 0)]
+broker_address = "192.168.72.119"
 port = 1883
-topic = [('edge/cam/2/time', 0), ('edge/cam/2/inprogress', 0), ('edge/cam/2/done', 0)]
-LABELS = ['BG', 'Human']
 
+os.environ[
+    "GOOGLE_APPLICATION_CREDENTIALS"
+] = "d:\keys\cloud-mqtt-detection-firebase-adminsdk-s4wo7-fe9e91fb67.json"  # add your Credentials keys path to sys environtment
 
-client_id = 'edge_2'
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"]= "d:\keys\cloud-mqtt-detection-firebase-adminsdk-s4wo7-fe9e91fb67.json"
-
-cred = credentials.Certificate(os.getenv("GOOGLE_APPLICATION_CREDENTIALS"))  # add your Credentials keys path to sys environtment
-image_path = "D:\\1.Skripsi\\Edge\\img\\2023-07-28_4473.jpeg"
-image_path = os.path.join("D:\\1.Skripsi", "Edge", "img", "2023-07-28_4473.jpeg")
+cred = credentials.Certificate(os.getenv("GOOGLE_APPLICATION_CREDENTIALS"))
 with open("telegram_key.txt") as f:
     token = f.readline()
 base_url = f"https://api.telegram.org/bot{token}/sendPhoto"
@@ -33,74 +33,41 @@ base_url = f"https://api.telegram.org/bot{token}/sendPhoto"
 
 def model_init() -> tf.keras.Model:
     working_dir = os.getcwd()
-    model_dir = os.path.join(working_dir, 'model')
+    model_dir = os.path.join(working_dir, "model")
     blob_name = "12_2023-11-02_mobilenet_v2_Id-88.h5"
     model_path = os.path.join(model_dir, blob_name)
     if not os.path.exists(model_dir):
-        print('no model found, downloading from the internet ...')
+        print("no model found, downloading from the internet ...")
         os.makedirs(model_dir)
         initialize_app(credential=cred)
         bucket = storage.bucket(name="cloud-mqtt-detection.appspot.com")
         blob = bucket.blob(blob_name=blob_name)
         blob.download_to_filename(model_path)
-        print('download success')
-    print('loading the model')
+        print("download success")
+    print("loading the model")
     model = tf.keras.models.load_model(model_path, compile=False)
     return model
-    # model_path = m_path
 
-
-def denormalize_bboxes(bboxes, height, width):
-    """Denormalizing bounding boxes.
-    Args:
-        bboxes : (batch_size, total_bboxes, [ymin, xmin, ymax, xmax])
-            in normalized form [0, 1]
-        height : image height
-        width : image width
-
-    Returns:
-        denormalized_bboxes : (batch_size, total_bboxes, [ymin, xmin, ymax, xmax])
-    """
-    ymin = bboxes[..., 0] * height
-    xmin = bboxes[..., 1] * width
-    ymax = bboxes[..., 2] * height
-    xmax = bboxes[..., 3] * width
-    return tf.round(tf.stack([ymin, xmin, ymax, xmax], axis=-1))
-
-
-def draw_bboxes_with_labels(img, bboxes, label_indices, probs, labels):
-    """Drawing bounding boxes with labels on given image.
-    inputs:
-        img : (height, width, channels)
-        bboxes : (total_bboxes, [y1, x1, y2, x2])
-            in denormalized form
-        label_indices : (total_bboxes)
-        probs : (total_bboxes)
-        labels : [labels string list]
-    """
-    colors = tf.random.uniform((len(labels), 4), maxval=256, dtype=tf.int32)
-    image = tf.keras.preprocessing.image.array_to_img(img)
-    draw = ImageDraw.Draw(image)
-    for index, bbox in enumerate(bboxes):
-        y1, x1, y2, x2 = tf.split(bbox, 4)
-        width = x2 - x1
-        height = y2 - y1
-        if width <= 0 or height <= 0:
-            continue
-        label_index = int(label_indices[index])
-        color = tuple(colors[label_index].numpy())
-        label_text = "{0} {1:0.3f}".format(labels[label_index], probs[index])
-        draw.text((x1 + 1, y1 - 11), label_text, fill=color)
-        draw.rectangle((x1, y1, x2, y2), outline=color, width=2)
-    return image
-
-
-def infer_draw_predictions(imgs, pred_bboxes, pred_labels, pred_scores, labels):
-    img_size = imgs.shape[1]
-    # for i, img in enumerate(imgs):
-    denormalized_bboxes = denormalize_bboxes(pred_bboxes, img_size, img_size)
-    img = draw_bboxes_with_labels(imgs, denormalized_bboxes, pred_labels, pred_scores, labels)
-    return img
+def data_logging(size, time_sent, time_arrive, time_edge_sent):
+    delay = 0
+    date_now = time.strftime("%Y-%m-%d", time.localtime())
+    working_dir = os.getcwd()
+    log_dir = os.path.join(working_dir, "log")
+    file_name = "{}_{}_subscriber.txt".format(date_now, client_id)
+    file_path = os.path.join(log_dir, file_name)
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    if not os.path.exists(file_path):
+        print("hereee")
+        with open(file_path, 'a') as f:
+            print("size(byte),time_sent,time_arrive,time_edge_sent", file=f)
+    with open(file_path, 'a') as f:
+        print("{},{},{},{}".format(size, time_sent, time_arrive, time_edge_sent), file=f)
+    print('calculate')
+    print(time_sent)
+    print(time_arrive)
+    print(time_edge_sent)
+    
 
 
 def connect_mqtt() -> mqtt_client:
@@ -108,33 +75,40 @@ def connect_mqtt() -> mqtt_client:
 
     def on_connect(client, userdata, flags, rc):
         if rc == 0:
-            print('Connected to MQTT Broker!')
+            print("{} connected to MQTT Broker!".format(client_id))
         else:
-            print('Failed to connect with return code {}'.format(rc))
+            print("Failed to connect with return code {}".format(rc))
+
     client = mqtt_client.Client(client_id=client_id)
     client.on_connect = on_connect
     client.connect(broker_address, port)
     return client
 
 
-def subscribe_mqtt(client: mqtt_client, ssd_model: tf.keras.Model, jj):
+def subscribe_mqtt(client: mqtt_client, ssd_model: tf.keras.Model):
     img = io.BytesIO()
     time_sent = []
+
     def on_message(client, userdata, msg):
         # print("Recieved data from {} topic".format(msg.topic))
         # print("Lenght : {}".format(len(msg.payload)))
-        if(msg.topic == topic[0][0]):
+        if msg.topic == topic[0][0]:
             time_sent.append(msg.payload.decode())
             print(f"The time is ... {time_sent}")
             img.seek(0)
             img.truncate()
-        elif(msg.topic == topic[1][0]):
-            # data.append(msg.payload)
+            time_arv = time.strftime("%H:%M:%S", time.localtime())
+            time.sleep(3)
+            time_edge_sent = time.strftime("%H:%M:%S", time.localtime())
+            
+            data_logging(10 ,time_sent[0], time_arv, time_edge_sent)
+            time_sent.clear()
+        elif msg.topic == topic[1][0]:
             img.seek(0, 2)
             img.write(msg.payload)
             # print("inprogress...")
             # print(img.getbuffer().nbytes)
-        elif(msg.topic == topic[2][0]):
+        elif msg.topic == topic[2][0]:
             print("===DONE===")
             # data.append(msg.payload)
             img.seek(0, 2)
@@ -148,20 +122,18 @@ def subscribe_mqtt(client: mqtt_client, ssd_model: tf.keras.Model, jj):
             p_bbox = tf.squeeze(p_bbox)
             p_scores = tf.squeeze(p_scores)
             p_labels = tf.squeeze(p_labels)
-            image = infer_draw_predictions(data, p_bbox, p_labels, p_scores, LABELS)
-            if (any(i >= 0.7 for i in p_scores)):
+            image = draw_utils.infer_draw_predictions(
+                data, p_bbox, p_labels, p_scores, LABELS, return_img=True
+            )
+            if any(i >= 0.7 for i in p_scores):
                 pred_img = io.BytesIO()
-                pred_img.name = 'result.jpeg'
-                image.save(pred_img, 'JPEG')
+                pred_img.name = "result.jpeg"
+                image.save(pred_img, "JPEG")
                 pred_img.seek(0)
                 parameter = {}
                 files = {}
-                # image = open(image_path, 'rb')
-                print('---')
-                print(type(image))
-                print(image)
                 files["photo"] = pred_img
-                parameter["chat_id"] = "-1001974152494" #id of channel telegram
+                parameter["chat_id"] = "-1001974152494"  # id of channel telegram
                 # parameter["photo"] = image_path
                 parameter["caption"] = time_sent[0]
                 time_sent.clear()
@@ -169,21 +141,20 @@ def subscribe_mqtt(client: mqtt_client, ssd_model: tf.keras.Model, jj):
                 print(parameter)
                 resp = requests.post(base_url, params=parameter, files=files)
                 print(resp.status_code)
-                print(resp.content)
             else:
                 time_sent.clear()
                 print("no human found")
 
-
-
     client.subscribe(topic)
     client.on_message = on_message
+
 
 def main():
     model = model_init()
     client = connect_mqtt()
-    subscribe_mqtt(client, model, False)
+    subscribe_mqtt(client, model)
     client.loop_forever()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

@@ -1,0 +1,3 @@
+size(byte),time_sent,time_arrive,time_edge_sent
+10,18:00:01,23:34:51,23:34:54
+10,18:00:01,23:36:47,23:36:50

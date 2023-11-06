@@ -107,7 +107,7 @@ void setup_camera() {
   config.pin_sscb_scl = SIOC_GPIO_NUM;
   config.pin_pwdn = PWDN_GPIO_NUM;
   config.pin_reset = RESET_GPIO_NUM;
-  config.xclk_freq_hz = 16500000;
+  config.xclk_freq_hz = 2000000;
   //  config.pixel_format = PIXFORMAT_RGB565;
   config.pixel_format = PIXFORMAT_JPEG;
 
@@ -142,8 +142,8 @@ void setup_camera() {
   s->set_exposure_ctrl(s, 1); // 0 = disable , 1 = enable
   s->set_aec2(s, 0); // 0 = disable , 1 = enable
   s->set_ae_level(s, -1); // -2 to 2
-  s->set_aec_value(s, 17); // 0 to 1200
-  s->set_gain_ctrl(s, 1); // 0 = disable , 1 = enable
+  s->set_aec_value(s, 16); // 0 to 1200
+  s->set_gain_ctrl(s, 0); // 0 = disable , 1 = enable
   s->set_agc_gain(s, 0); // 0 to 30
   s->set_gainceiling(s, (gainceiling_t)5); // 0 to 6
   s->set_bpc(s, 1); // 0 = disable , 1 = enable
@@ -188,7 +188,6 @@ void setup() {
   setenv("TZ", "WIB-7", 1);
   tzset();
   Serial.println("Setup done");
-
 }
 
 void loop() {
