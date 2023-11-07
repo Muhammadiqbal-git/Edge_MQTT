@@ -17,7 +17,11 @@ LABELS = ["BG", "Human"]
 
 ID = 2
 client_id = "edge_{}".format(ID)
-topic = [(f"edge/cam/{ID}/time", 0), (f"edge/cam/{ID}/inprogress", 0), (f"edge/cam/{ID}/done", 0)]
+topic = [
+    (f"edge/cam/{ID}/time", 0),
+    (f"edge/cam/{ID}/inprogress", 0),
+    (f"edge/cam/{ID}/done", 0),
+]
 broker_address = "192.168.72.119"
 port = 1883
 
@@ -48,9 +52,10 @@ def model_init() -> tf.keras.Model:
     model = tf.keras.models.load_model(model_path, compile=False)
     return model
 
-    
 
-def data_logging(size, cam_time_sent, edge_time_arrival, edge_time_sent, telegram_time_arrival):
+def data_logging(
+    size, cam_time_sent, edge_time_arrival, edge_time_sent, telegram_time_arrival
+):
     delay = 0
     date_now = time.strftime("%Y-%m-%d", time.localtime())
     working_dir = os.getcwd()
@@ -61,11 +66,22 @@ def data_logging(size, cam_time_sent, edge_time_arrival, edge_time_sent, telegra
         os.makedirs(log_dir)
     if not os.path.exists(file_path):
         print("hereee")
-        with open(file_path, 'a') as f:
-            print("size(byte),cam_time_sent,edge_time_arv,edge_time_sent,telegram_time_arv", file=f)
-    with open(file_path, 'a') as f:
-        print("{},{},{},{},{}".format(size, cam_time_sent, edge_time_arrival, edge_time_sent, telegram_time_arrival), file=f)
-    
+        with open(file_path, "a") as f:
+            print(
+                "size(byte),cam_time_sent,edge_time_arv,edge_time_sent,telegram_time_arv",
+                file=f,
+            )
+    with open(file_path, "a") as f:
+        print(
+            "{},{},{},{},{}".format(
+                size,
+                cam_time_sent,
+                edge_time_arrival,
+                edge_time_sent,
+                telegram_time_arrival,
+            ),
+            file=f,
+        )
 
 
 def connect_mqtt() -> mqtt_client:
@@ -81,6 +97,32 @@ def connect_mqtt() -> mqtt_client:
     client.on_connect = on_connect
     client.connect(broker_address, port)
     return client
+
+def cache_data(edge_time_sent, img_data):
+    data_cache = {}
+    time_cached = time.strftime("%Y-%m-%d")
+    working_dir = os.getcwd()
+    cache_dir = os.path.join(working_dir, "cache")
+    if not os.path.exists(cache_dir):
+        os.makedirs(cache_dir)
+    img_fname = "{}_{}_CAM-{}_{}.jpeg".format(
+        time_cached,
+        edge_time_sent.replace(":", "-"),
+        ID,
+        random.randint(1111, 9999),
+    )
+    json_fname = img_fname.replace(".jpeg", ".json")
+    img_cache_path = os.path.join(cache_dir, img_fname)
+    data_cache_path = os.path.join(cache_dir, json_fname)
+    data_cache["cam_id"] = ID
+    data_cache["cache_time"] = edge_time_sent
+    data_cache["cache_date"] = time_cached
+    data_cache["img_path"] = img_cache_path
+    img_data.save(img_cache_path, format="JPEG")
+    with open(data_cache_path, "w") as f:
+        json.dump(data_cache, f)
+    
+    
 
 
 def subscribe_mqtt(client: mqtt_client, ssd_model: tf.keras.Model):
@@ -109,16 +151,12 @@ def subscribe_mqtt(client: mqtt_client, ssd_model: tf.keras.Model):
             print(len(cam_time_sent))
             data = data_utils.single_custom_data_gen(img, 500, 500)
             p_bbox, p_scores, p_labels = ssd_model.predict(data)
-            data = tf.squeeze(data)
-            p_bbox = tf.squeeze(p_bbox)
-            p_scores = tf.squeeze(p_scores)
-            p_labels = tf.squeeze(p_labels)
             result_img = draw_utils.infer_draw_predictions(
                 data, p_bbox, p_labels, p_scores, LABELS, return_img=True
             )
             print(f"type {type(result_img)}")
-            if any(i >= 0.7 for i in p_scores):
-            # if True:
+            if any(i >= 0.7 for i in tf.squeeze(p_scores)):
+                # if True:
                 print("human detected")
                 buff_result_img = io.BytesIO()
                 buff_result_img.name = "result.jpeg"
@@ -128,46 +166,32 @@ def subscribe_mqtt(client: mqtt_client, ssd_model: tf.keras.Model):
                 files = {}
                 files["photo"] = buff_result_img
                 parameter["chat_id"] = "-1001974152494"  # id of channel telegram
-                # parameter["photo"] = image_path
-                
-                parameter["caption"] = "{}-CAM {}".format(cam_time_sent[0], ID)
+                parameter["caption"] = "{}\nLocation: CAM-{}".format(cam_time_sent[0], ID)
                 print(base_url)
                 print(parameter)
                 edge_time_sent = time.strftime("%H:%M:%S", time.localtime())
                 try:
-                    resp = requests.post(base_url, params=parameter, files=files)
+                    resp = requests.post(base_url, params=parameter, files=files, timeout=3)
                     print(resp.status_code)
                     if resp.status_code == 200:
-                        telegram_time_arrival = time.strftime("%H:%M:%S", time.localtime())
-                        data_logging(img.getbuffer().nbytes ,cam_time_sent[0], edge_time_arv, edge_time_sent, telegram_time_arrival)
+                        telegram_time_arrival = time.strftime(
+                            "%H:%M:%S", time.localtime()
+                        )
+                        data_logging(
+                            img.getbuffer().nbytes,
+                            cam_time_sent[0],
+                            edge_time_arv,
+                            edge_time_sent,
+                            telegram_time_arrival,
+                        )
                     else:
                         raise Exception("other than 200")
                 except:
-                        data_cache = {}
-                        time_cached = time.strftime("%Y-%m-%d")
-                        working_dir = os.getcwd()
-                        cache_dir = os.path.join(working_dir, "cache")
-                        img_cache_dir = os.path.join(cache_dir, "img_temp")
-                        
-                        if not os.path.exists(cache_dir):
-                            os.makedirs(cache_dir)
-                            if not os.path.exists(img_cache_dir):
-                                os.mkdir(img_cache_dir)
-                        img_fname = "{}_CAM-{}_{}.jpeg".format(time_cached, ID, random.randint(1111, 9999))
-                        json_fname = img_fname.replace(".jpeg", ".json")
-                        img_cache_path = os.path.join(img_cache_dir, img_fname)
-                        data_cache_path = os.path.join(cache_dir, json_fname)
-                        data_cache["cam_id"] = ID
-                        data_cache["cache_time"] = edge_time_sent
-                        data_cache["cache_date"] = time_cached
-                        data_cache["img_path"] = img_cache_path
-                        result_img.save(img_cache_path, format="JPEG")
-                        with open(data_cache_path, "w") as f:
-                            json.dump(data_cache, f)
+                    cache_data(edge_time_sent, result_img)
+
             else:
                 cam_time_sent.clear()
                 print("no human found")
-            
 
     client.subscribe(topic)
     client.on_message = on_message

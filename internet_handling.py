@@ -6,7 +6,7 @@ import json
 import io
 with open("telegram_key.txt") as f:
     token = f.readline()
-base_url = "https://api.telegram.org/bot{}/sendPhoto".format(token)
+base_url = "https://api.telegram.org/bot{}/sendPhoto?parse".format(token)
 
 
 def check_internet():
@@ -19,6 +19,8 @@ def main():
         list_cache = os.listdir(cache_dir)
         if check_internet() and len(list_cache) >= 1:
             for item in list_cache:
+                if item.endswith(".jpeg"):
+                    continue
                 file_path = os.path.join(cache_dir, item)
                 try:
                     with open(file_path, "r+") as f:
@@ -28,24 +30,24 @@ def main():
                         with open(data["img_path"], "rb") as img_f:
                             image.write(img_f.read())
                         image.seek(0)
-                        cache_time_sent = time.strftime("%H:%M:%S", time.localtime())
                         files = {}
                         files["photo"] = image
                         parameter = {}
                         parameter["chat_id"] =  "-1001974152494"
-                        parameter["caption"] = "{}-CAM {}\ncached {}".format(data["cache_time"], data["cam_id"], data["cache_date"])
-                        resp = requests.post(base_url, params=parameter, files=files, )
-                        if resp.status_code == 200:
-                            print("sent {}".format(item))
-                            os.remove(data["img_path"])
-                            os.remove(file_path)
+                        parameter["parse_mode"] = "Markdown"
+                        parameter["caption"] = "{}\nLocation: CAM-{}\n---------------------\n_this is a cached picture_".format(data["cache_time"], data["cam_id"])
+                        resp = requests.post(base_url, params=parameter, files=files, timeout=3)
+                    if resp.status_code == 200:
+                        print("sent {}".format(item))
+                        os.remove(data["img_path"])
+                        os.remove(file_path)
                 except:
-                    break
-                    
-
+                    print("except trigger")
+                    continue
+            print("after foreach")     
             time.sleep(10.0)
         else:
-            print("no internet")
+            print("no internet or no more data")
             time.sleep(5.0)
 
 if __name__ == "__main__":

@@ -116,7 +116,7 @@ void setup_camera() {
   if (psramFound()) {
     config.frame_size = FRAMESIZE_SVGA;
     config.jpeg_quality = 9;  //0-63 lower number means higher quality
-    config.fb_count = 2;
+    config.fb_count = 1;
     config.grab_mode = CAMERA_GRAB_LATEST;
     // config.fb_location = CAMERA_FB_IN_PSRAM;
   } else {
@@ -168,7 +168,12 @@ void setup_camera() {
   delay(1200);
   Serial.println("continue");
 }
+void WiFiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
+  Serial.println("Lost connection to access point");
+  Serial.println("Trying to reconnect");
+  WiFi.begin(ssid, pass);
 
+}
 void setup() {
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
   Serial.begin(115200);
@@ -186,26 +191,32 @@ void setup() {
   //Print the wakeup reason for ESP32
   print_wakeup_reason();
   pinMode(GPIO_NUM_13, INPUT_PULLUP);
+  // pinMode(GPIO_NUM_15, INPUT);
   setup_camera();
   configTime(0, dayOffset_sec, NTPSERVER);
   setenv("TZ", "WIB-7", 1);
   tzset();
+  WiFi.onEvent(WiFiDisconnected, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
   Serial.println("Setup done");
 }
 
 void loop() {
   //This is not going to be called
   if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0) {
-    delay(50);
-    if (WiFi.status() != WL_CONNECTED) {
-      Serial.print("Reconnecting..");
-      WiFi.reconnect();
-      while (WiFi.status() != WL_CONNECTED) {
-        delay(50);
-        Serial.print(".");
-      }
-      Serial.println();
+    //    if (WiFi.status() != WL_CONNECTED) {
+    //      Serial.print("Reconnecting..");
+    //      WiFi.reconnect();
+    //      while (WiFi.status() != WL_CONNECTED) {
+    //        delay(50);
+    //        Serial.print(".");
+    //      }
+    //      Serial.println();
+    //    }
+    while (WiFi.status() != WL_CONNECTED) {
+      delay(50);
+      Serial.print(".");
     }
+    Serial.println();
 
     String client_id = "esp32-client-";
     client.setServer(broker_address, port);
@@ -222,9 +233,9 @@ void loop() {
       if (client.connected()) {
         Serial.println("Client Connected");
         // CHANGE THE 'FOR' CONDITION TO INCREASE IMAGE TAKEN
-        for (int i = 0; i <= 6; i++) {
+        for (int i = 0; i <= 2  ; i++) {
           camera_fb_t *fb = NULL;
-          if (i <= 4) {
+          if (i < 1) {
             fb = esp_camera_fb_get();
             esp_camera_fb_return(fb);
             continue;
@@ -233,12 +244,12 @@ void loop() {
           // GET TIME USING NTP SERVER
           String timeNow = "";
           if (Ping.ping("api.telegram.org", 1)) {
+            Serial.println("get");
             timeNow = getTimeNow();
           } else {
             timeNow = "0";
           }
           //          String timeNow = "img_gen_mode";
-          Serial.println("asd");
           if (!fb) {
             Serial.println("Camera capture failed");
             delay(200);
@@ -297,5 +308,5 @@ void loop() {
   esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
   delay(200);
   esp_light_sleep_start();
-  delay(100);
+  delay(170);
 }
