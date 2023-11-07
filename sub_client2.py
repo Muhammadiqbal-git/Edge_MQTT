@@ -1,17 +1,17 @@
-import sys
 import io
-import tensorflow as tf
 import os
-import asyncio
+import json
 import requests
 import time
+import random
+import tensorflow as tf
+
 from models import decoder, prediction_head
 from utils import data_utils, draw_utils
 from firebase_admin import credentials, initialize_app, storage
 from paho.mqtt import client as mqtt_client
-from PIL import Image, ImageDraw
-from telegram import Bot
-from telegram.ext import MessageHandler, ContextTypes
+from PIL import Image, ImageFile
+
 
 LABELS = ["BG", "Human"]
 
@@ -28,7 +28,7 @@ os.environ[
 cred = credentials.Certificate(os.getenv("GOOGLE_APPLICATION_CREDENTIALS"))
 with open("telegram_key.txt") as f:
     token = f.readline()
-base_url = f"https://api.telegram.org/bot{token}/sendPhoto"
+base_url = "https://api.telegram.org/bot{}/sendPhoto".format(token)
 
 
 def model_init() -> tf.keras.Model:
@@ -48,7 +48,9 @@ def model_init() -> tf.keras.Model:
     model = tf.keras.models.load_model(model_path, compile=False)
     return model
 
-def data_logging(size, time_sent, time_arrive, time_edge_sent):
+    
+
+def data_logging(size, cam_time_sent, edge_time_arrival, edge_time_sent, telegram_time_arrival):
     delay = 0
     date_now = time.strftime("%Y-%m-%d", time.localtime())
     working_dir = os.getcwd()
@@ -60,13 +62,9 @@ def data_logging(size, time_sent, time_arrive, time_edge_sent):
     if not os.path.exists(file_path):
         print("hereee")
         with open(file_path, 'a') as f:
-            print("size(byte),time_sent,time_arrive,time_edge_sent", file=f)
+            print("size(byte),cam_time_sent,edge_time_arv,edge_time_sent,telegram_time_arv", file=f)
     with open(file_path, 'a') as f:
-        print("{},{},{},{}".format(size, time_sent, time_arrive, time_edge_sent), file=f)
-    print('calculate')
-    print(time_sent)
-    print(time_arrive)
-    print(time_edge_sent)
+        print("{},{},{},{},{}".format(size, cam_time_sent, edge_time_arrival, edge_time_sent, telegram_time_arrival), file=f)
     
 
 
@@ -87,63 +85,89 @@ def connect_mqtt() -> mqtt_client:
 
 def subscribe_mqtt(client: mqtt_client, ssd_model: tf.keras.Model):
     img = io.BytesIO()
-    time_sent = []
+    cam_time_sent = []
 
     def on_message(client, userdata, msg):
         # print("Recieved data from {} topic".format(msg.topic))
         # print("Lenght : {}".format(len(msg.payload)))
         if msg.topic == topic[0][0]:
-            time_sent.append(msg.payload.decode())
-            print(f"The time is ... {time_sent}")
+            cam_time_sent.clear()
+            cam_time_sent.append(msg.payload.decode())
+            print(f"The time is ... {cam_time_sent}")
             img.seek(0)
             img.truncate()
-            time_arv = time.strftime("%H:%M:%S", time.localtime())
-            time.sleep(3)
-            time_edge_sent = time.strftime("%H:%M:%S", time.localtime())
-            
-            data_logging(10 ,time_sent[0], time_arv, time_edge_sent)
-            time_sent.clear()
         elif msg.topic == topic[1][0]:
             img.seek(0, 2)
             img.write(msg.payload)
-            # print("inprogress...")
-            # print(img.getbuffer().nbytes)
         elif msg.topic == topic[2][0]:
             print("===DONE===")
-            # data.append(msg.payload)
             img.seek(0, 2)
             img.write(msg.payload)
             img.seek(0)
+            edge_time_arv = time.strftime("%H:%M:%S", time.localtime())
             print(img.getbuffer().nbytes)
-            print(len(time_sent))
+            print(len(cam_time_sent))
             data = data_utils.single_custom_data_gen(img, 500, 500)
             p_bbox, p_scores, p_labels = ssd_model.predict(data)
             data = tf.squeeze(data)
             p_bbox = tf.squeeze(p_bbox)
             p_scores = tf.squeeze(p_scores)
             p_labels = tf.squeeze(p_labels)
-            image = draw_utils.infer_draw_predictions(
+            result_img = draw_utils.infer_draw_predictions(
                 data, p_bbox, p_labels, p_scores, LABELS, return_img=True
             )
+            print(f"type {type(result_img)}")
             if any(i >= 0.7 for i in p_scores):
-                pred_img = io.BytesIO()
-                pred_img.name = "result.jpeg"
-                image.save(pred_img, "JPEG")
-                pred_img.seek(0)
+            # if True:
+                print("human detected")
+                buff_result_img = io.BytesIO()
+                buff_result_img.name = "result.jpeg"
+                result_img.save(buff_result_img, "JPEG")
+                buff_result_img.seek(0)
                 parameter = {}
                 files = {}
-                files["photo"] = pred_img
+                files["photo"] = buff_result_img
                 parameter["chat_id"] = "-1001974152494"  # id of channel telegram
                 # parameter["photo"] = image_path
-                parameter["caption"] = time_sent[0]
-                time_sent.clear()
+                
+                parameter["caption"] = "{}-CAM {}".format(cam_time_sent[0], ID)
                 print(base_url)
                 print(parameter)
-                resp = requests.post(base_url, params=parameter, files=files)
-                print(resp.status_code)
+                edge_time_sent = time.strftime("%H:%M:%S", time.localtime())
+                try:
+                    resp = requests.post(base_url, params=parameter, files=files)
+                    print(resp.status_code)
+                    if resp.status_code == 200:
+                        telegram_time_arrival = time.strftime("%H:%M:%S", time.localtime())
+                        data_logging(img.getbuffer().nbytes ,cam_time_sent[0], edge_time_arv, edge_time_sent, telegram_time_arrival)
+                    else:
+                        raise Exception("other than 200")
+                except:
+                        data_cache = {}
+                        time_cached = time.strftime("%Y-%m-%d")
+                        working_dir = os.getcwd()
+                        cache_dir = os.path.join(working_dir, "cache")
+                        img_cache_dir = os.path.join(cache_dir, "img_temp")
+                        
+                        if not os.path.exists(cache_dir):
+                            os.makedirs(cache_dir)
+                            if not os.path.exists(img_cache_dir):
+                                os.mkdir(img_cache_dir)
+                        img_fname = "{}_CAM-{}_{}.jpeg".format(time_cached, ID, random.randint(1111, 9999))
+                        json_fname = img_fname.replace(".jpeg", ".json")
+                        img_cache_path = os.path.join(img_cache_dir, img_fname)
+                        data_cache_path = os.path.join(cache_dir, json_fname)
+                        data_cache["cam_id"] = ID
+                        data_cache["cache_time"] = edge_time_sent
+                        data_cache["cache_date"] = time_cached
+                        data_cache["img_path"] = img_cache_path
+                        result_img.save(img_cache_path, format="JPEG")
+                        with open(data_cache_path, "w") as f:
+                            json.dump(data_cache, f)
             else:
-                time_sent.clear()
+                cam_time_sent.clear()
                 print("no human found")
+            
 
     client.subscribe(topic)
     client.on_message = on_message

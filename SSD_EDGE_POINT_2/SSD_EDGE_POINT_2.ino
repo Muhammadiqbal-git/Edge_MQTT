@@ -14,6 +14,7 @@
 #include <PubSubClient.h>
 #include "time.h"
 #include <Vector.h>
+#include <ESP32Ping.h>
 //#include <ArduinoJson.h>
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
@@ -107,17 +108,17 @@ void setup_camera() {
   config.pin_sscb_scl = SIOC_GPIO_NUM;
   config.pin_pwdn = PWDN_GPIO_NUM;
   config.pin_reset = RESET_GPIO_NUM;
-  config.xclk_freq_hz = 20000000;
+  config.xclk_freq_hz = 2000000;
   //  config.pixel_format = PIXFORMAT_RGB565;
   config.pixel_format = PIXFORMAT_JPEG;
 
   // init with high specs to pre-allocate larger buffers
   if (psramFound()) {
     config.frame_size = FRAMESIZE_SVGA;
-    config.jpeg_quality = 7;  //0-63 lower number means higher quality
+    config.jpeg_quality = 9;  //0-63 lower number means higher quality
     config.fb_count = 2;
     config.grab_mode = CAMERA_GRAB_LATEST;
-    config.fb_location = CAMERA_FB_IN_PSRAM;
+    // config.fb_location = CAMERA_FB_IN_PSRAM;
   } else {
     config.frame_size = FRAMESIZE_CIF;
     config.jpeg_quality = 40;  //0-63 lower number means higher quality
@@ -128,24 +129,26 @@ void setup_camera() {
   esp_err_t err = esp_camera_init(&config);
   if (err != ESP_OK) {
     Serial.printf("Camera init failed with error 0x%x", err);
+    ESP.restart();
     return;
   }
+  delay(1000);
 
   sensor_t * s = esp_camera_sensor_get();
-  s->set_brightness(s, 1); // -2 to 2
-  s->set_contrast(s, -1); // -2 to 2
-  s->set_saturation(s, 0); // -2 to 2
+  s->set_brightness(s, 0); // -2 to 2
+  s->set_contrast(s, -2); // -2 to 2
+  s->set_saturation(s, -2); // -2 to 2
   s->set_special_effect(s, 0); // 0 to 6 (0 - No Effect, 1 - Negative, 2 - Grayscale, 3 - Red Tint, 4 - Green Tint, 5 - Blue Tint, 6 - Sepia)
   s->set_whitebal(s, 1); // 0 = disable , 1 = enable
   s->set_awb_gain(s, 1); // 0 = disable , 1 = enable
-  s->set_wb_mode(s, 1); // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
+  s->set_wb_mode(s, 0); // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
   s->set_exposure_ctrl(s, 1); // 0 = disable , 1 = enable
-  s->set_aec2(s, 0); // 0 = disable , 1 = enable
-  s->set_ae_level(s, -1); // -2 to 2
-  s->set_aec_value(s, 13); // 0 to 1200
+  s->set_aec2(s, 1); // 0 = disable , 1 = enable
+  s->set_ae_level(s, 0); // -2 to 2
+  s->set_aec_value(s, 5); // 0 to 1200
   s->set_gain_ctrl(s, 0); // 0 = disable , 1 = enable
   s->set_agc_gain(s, 0); // 0 to 30
-  s->set_gainceiling(s, (gainceiling_t)5); // 0 to 6
+  // s->set_gainceiling(s, (gainceiling_t)5); // 0 to 6
   s->set_bpc(s, 1); // 0 = disable , 1 = enable
   s->set_wpc(s, 1); // 0 = disable , 1 = enable
   s->set_raw_gma(s, 1); // 0 = disable , 1 = enable (makes much lighter and noisy)
@@ -154,15 +157,15 @@ void setup_camera() {
   s->set_vflip(s, 0); // 0 = disable , 1 = enable
   s->set_dcw(s, 0); // 0 = disable , 1 = enable
   s->set_colorbar(s, 0); // 0 = disable , 1 = enable
-  //  s->set_reg(s, 0xff, 0xff, 0x01); //banksel
-  //  s->set_reg(s, 0x11, 0xff, 01); //frame rate
-  //  s->set_reg(s, 0xff, 0xff, 0x00); //banksel
-  //  s->set_reg(s, 0x86, 0xff, 1); //disable effects
-  //  s->set_reg(s, 0xd3, 0xff, 5); //clock
-  //  s->set_reg(s, 0x42, 0xff, 0x4f); //image quality (lower is bad)
-  //  s->set_reg(s, 0x44, 0xff, 1); //quality
+  s->set_reg(s, 0xff, 0xff, 0x01); //banksel
+  s->set_reg(s, 0x11, 0xff, 01); //frame rate
+  s->set_reg(s, 0xff, 0xff, 0x00); //banksel
+  s->set_reg(s, 0x86, 0xff, 1); //disable effects
+  s->set_reg(s, 0xd3, 0xff, 5); //clock
+  s->set_reg(s, 0x42, 0xff, 0x4f); //image quality (lower is bad)
+  //    s->set_reg(s, 0x44, 0xff, 1); //quality
   Serial.println("wait config");
-  delay(2000);
+  delay(1200);
   Serial.println("continue");
 }
 
@@ -173,7 +176,7 @@ void setup() {
   Serial.println("Connecting to wifi");
   WiFi.begin(ssid, pass);
   while (WiFi.status() != WL_CONNECTED) {
-    delay(200);
+    delay(50);
     Serial.print(".");
   }
   Serial.println();
@@ -188,23 +191,22 @@ void setup() {
   setenv("TZ", "WIB-7", 1);
   tzset();
   Serial.println("Setup done");
-
 }
 
 void loop() {
   //This is not going to be called
   if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0) {
-    while (WiFi.status() != WL_CONNECTED) {
-      Serial.println("Reconnecting..");
-      WiFi.begin(ssid, pass);
-      delay(200);
+    delay(50);
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.print("Reconnecting..");
+      WiFi.reconnect();
       while (WiFi.status() != WL_CONNECTED) {
-        delay(200);
+        delay(50);
         Serial.print(".");
       }
+      Serial.println();
     }
-    delay(170);
-    Serial.println();
+
     String client_id = "esp32-client-";
     client.setServer(broker_address, port);
     int err_threshold = 0;
@@ -215,8 +217,9 @@ void loop() {
       }
       client_id += String(WiFi.macAddress());
       Serial.println("Client connect to " + client_id);
-
-      if (client.connect(client_id.c_str())) {
+      client.connect(client_id.c_str());
+      delay(100);
+      if (client.connected()) {
         Serial.println("Client Connected");
         // CHANGE THE 'FOR' CONDITION TO INCREASE IMAGE TAKEN
         for (int i = 0; i <= 6; i++) {
@@ -226,11 +229,14 @@ void loop() {
             esp_camera_fb_return(fb);
             continue;
           }
-          //          pinMode(4, OUTPUT);
-          //          digitalWrite(4, HIGH);
           fb = esp_camera_fb_get();
           // GET TIME USING NTP SERVER
-          String timeNow = getTimeNow();
+          String timeNow = "";
+          if (Ping.ping("api.telegram.org", 1)) {
+            timeNow = getTimeNow();
+          } else {
+            timeNow = "0";
+          }
           //          String timeNow = "img_gen_mode";
           Serial.println("asd");
           if (!fb) {
@@ -264,15 +270,16 @@ void loop() {
               if (client.publish(topicProgress, vector.data(), vector.size(), false)) {
                 //              Serial.println("Next part of data begin to publish");
               }
-              delay(1);
+              // delay(1);
               vector.clear();
             }
 
           }
           esp_camera_fb_return(fb);
           // delay for each image taken
-          delay(850);
+          delay(550);
         }
+        delay(200);
         //        pinMode(4, OUTPUT);
         //        digitalWrite(4, LOW);
       }
@@ -287,6 +294,8 @@ void loop() {
   Serial.println("Going to sleep now");
   // go to sleep
   esp_sleep_enable_ext0_wakeup(GPIO_NUM_13, HIGH);
-  delay(130);
+  esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
+  delay(200);
   esp_light_sleep_start();
+  delay(100);
 }
