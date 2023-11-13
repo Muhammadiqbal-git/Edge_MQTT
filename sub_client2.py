@@ -155,7 +155,7 @@ def subscribe_mqtt(client: mqtt_client, ssd_model: tf.keras.Model):
                 data, p_bbox, p_labels, p_scores, LABELS, return_img=True
             )
             print(f"type {type(result_img)}")
-            if any(i >= 0.7 for i in tf.squeeze(p_scores)):
+            if any(i >= 0.7 for i in tf.squeeze(p_scores)): # IF any confidence scores is more than 0.7 (likely there is human)
                 # if True:
                 print("human detected")
                 buff_result_img = io.BytesIO()
