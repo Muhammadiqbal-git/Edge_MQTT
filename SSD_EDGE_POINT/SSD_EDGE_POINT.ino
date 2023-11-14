@@ -141,12 +141,12 @@ void setup_camera() {
   s->set_special_effect(s, 0); // 0 to 6 (0 - No Effect, 1 - Negative, 2 - Grayscale, 3 - Red Tint, 4 - Green Tint, 5 - Blue Tint, 6 - Sepia)
   s->set_whitebal(s, 1); // 0 = disable , 1 = enable
   s->set_awb_gain(s, 1); // 0 = disable , 1 = enable
-  s->set_wb_mode(s, 0); // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
+  s->set_wb_mode(s, 1); // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
   s->set_exposure_ctrl(s, 1); // 0 = disable , 1 = enable
-  s->set_aec2(s, 1); // 0 = disable , 1 = enable
-  s->set_ae_level(s, 0); // -2 to 2
-  s->set_aec_value(s, 5); // 0 to 1200
-  s->set_gain_ctrl(s, 0); // 0 = disable , 1 = enable
+  s->set_aec2(s, 0); // 0 = disable , 1 = enable
+  s->set_ae_level(s, -1); // -2 to 2
+  s->set_aec_value(s, 10); // 0 to 1200
+  s->set_gain_ctrl(s, 1); // 0 = disable , 1 = enable
   s->set_agc_gain(s, 0); // 0 to 30
   // s->set_gainceiling(s, (gainceiling_t)5); // 0 to 6
   s->set_bpc(s, 1); // 0 = disable , 1 = enable
@@ -198,34 +198,31 @@ void setup() {
   tzset();
   WiFi.onEvent(WiFiDisconnected, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
   Serial.println("Setup done");
+  client.setServer(broker_address, port);
+
+
 }
 
 void loop() {
   //This is not going to be called
-  if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0) {
-    //    if (WiFi.status() != WL_CONNECTED) {
-    //      Serial.print("Reconnecting..");
-    //      WiFi.reconnect();
-    //      while (WiFi.status() != WL_CONNECTED) {
-    //        delay(50);
-    //        Serial.print(".");
-    //      }
-    //      Serial.println();
-    //    }
+  delay(250);
+  Serial.println("pir not high");
+
+  if (digitalRead(GPIO_NUM_13)) {
     while (WiFi.status() != WL_CONNECTED) {
       delay(50);
       Serial.print(".");
     }
     Serial.println();
 
-    String client_id = "esp32-client-";
-    client.setServer(broker_address, port);
+
     int err_threshold = 0;
     while (!client.connected()) {
       err_threshold++;
       if (err_threshold == 2) {
         ESP.restart();
       }
+      String client_id = "esp32-client-";
       client_id += String(WiFi.macAddress());
       Serial.println("Client connect to " + client_id);
       client.connect(client_id.c_str());
@@ -288,7 +285,7 @@ void loop() {
           }
           esp_camera_fb_return(fb);
           // delay for each image taken
-          delay(850);
+          delay(550);
         }
         delay(200);
         //        pinMode(4, OUTPUT);
@@ -304,9 +301,6 @@ void loop() {
   }
   Serial.println("Going to sleep now");
   // go to sleep
-  esp_sleep_enable_ext0_wakeup(GPIO_NUM_13, HIGH);
-  esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
-  delay(200);
-  esp_light_sleep_start();
-  delay(170);
+
+  delay(250);
 }
