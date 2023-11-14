@@ -186,12 +186,10 @@ void setup() {
   }
   Serial.println();
   esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
-  //Increment boot number and print it every reboot
 
   //Print the wakeup reason for ESP32
   print_wakeup_reason();
   pinMode(GPIO_NUM_13, INPUT_PULLUP);
-  // pinMode(GPIO_NUM_15, INPUT);
   setup_camera();
   configTime(0, dayOffset_sec, NTPSERVER);
   setenv("TZ", "WIB-7", 1);
@@ -201,17 +199,7 @@ void setup() {
 }
 
 void loop() {
-  //This is not going to be called
   if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0) {
-    //    if (WiFi.status() != WL_CONNECTED) {
-    //      Serial.print("Reconnecting..");
-    //      WiFi.reconnect();
-    //      while (WiFi.status() != WL_CONNECTED) {
-    //        delay(50);
-    //        Serial.print(".");
-    //      }
-    //      Serial.println();
-    //    }
     while (WiFi.status() != WL_CONNECTED) {
       delay(50);
       Serial.print(".");
@@ -243,7 +231,7 @@ void loop() {
           fb = esp_camera_fb_get();
           // GET TIME USING NTP SERVER
           String timeNow = "";
-          if (Ping.ping("api.telegram.org", 1)) {
+          if (Ping.ping("api.telegram.org", 2)) {
             Serial.println("get");
             timeNow = getTimeNow();
           } else {
