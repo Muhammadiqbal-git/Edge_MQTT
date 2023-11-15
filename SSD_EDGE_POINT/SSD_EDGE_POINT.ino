@@ -186,7 +186,6 @@ void setup() {
   }
   Serial.println();
   esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
-
   //Print the wakeup reason for ESP32
   print_wakeup_reason();
   pinMode(GPIO_NUM_13, INPUT_PULLUP);
@@ -197,27 +196,19 @@ void setup() {
   WiFi.onEvent(WiFiDisconnected, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
   Serial.println("Setup done");
   client.setServer(broker_address, port);
-
-
 }
 
 void loop() {
-<<<<<<< HEAD
-  if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0) {
-=======
+
   //This is not going to be called
   delay(250);
   Serial.println("pir not high");
-
   if (digitalRead(GPIO_NUM_13)) {
->>>>>>> c6e25ee8e815f54a47cf117f86664ba6ae4a34aa
     while (WiFi.status() != WL_CONNECTED) {
       delay(50);
       Serial.print(".");
     }
     Serial.println();
-
-
     int err_threshold = 0;
     while (!client.connected()) {
       err_threshold++;
@@ -248,7 +239,6 @@ void loop() {
           } else {
             timeNow = "0";
           }
-          //          String timeNow = "img_gen_mode";
           if (!fb) {
             Serial.println("Camera capture failed");
             delay(200);
@@ -268,30 +258,23 @@ void loop() {
           for (int j = 0; j < fb->len; j++) {
             vector.push_back(fb->buf[j]);
             if (j == fb->len - 1) {
-              //            Serial.println(vector.size());
               if (client.publish(topicDone, vector.data(), vector.size(), false)) {
                 Serial.println("All part of data published");
               }
               delay(10);
               vector.clear();
             }
-            //           if (j % 128 == 0 && j != 0)
             else if (j % 256 == 0 && j != 0) {
               if (client.publish(topicProgress, vector.data(), vector.size(), false)) {
-                //              Serial.println("Next part of data begin to publish");
               }
-              // delay(1);
               vector.clear();
             }
 
           }
           esp_camera_fb_return(fb);
-          // delay for each image taken
           delay(550);
         }
         delay(200);
-        //        pinMode(4, OUTPUT);
-        //        digitalWrite(4, LOW);
       }
       else {
         Serial.printf("Failed with state %d \n", client.state());
@@ -301,8 +284,5 @@ void loop() {
     }
     client.disconnect();
   }
-  Serial.println("Going to sleep now");
-  // go to sleep
-
   delay(250);
 }
