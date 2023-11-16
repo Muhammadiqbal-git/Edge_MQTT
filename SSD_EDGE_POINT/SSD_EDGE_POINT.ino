@@ -186,12 +186,9 @@ void setup() {
   }
   Serial.println();
   esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
-  //Increment boot number and print it every reboot
-
   //Print the wakeup reason for ESP32
   print_wakeup_reason();
   pinMode(GPIO_NUM_13, INPUT_PULLUP);
-  // pinMode(GPIO_NUM_15, INPUT);
   setup_camera();
   configTime(0, dayOffset_sec, NTPSERVER);
   setenv("TZ", "WIB-7", 1);
@@ -199,23 +196,19 @@ void setup() {
   WiFi.onEvent(WiFiDisconnected, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
   Serial.println("Setup done");
   client.setServer(broker_address, port);
-
-
 }
 
 void loop() {
+
   //This is not going to be called
   delay(250);
   Serial.println("pir not high");
-
   if (digitalRead(GPIO_NUM_13)) {
     while (WiFi.status() != WL_CONNECTED) {
       delay(50);
       Serial.print(".");
     }
     Serial.println();
-
-
     int err_threshold = 0;
     while (!client.connected()) {
       err_threshold++;
@@ -240,13 +233,12 @@ void loop() {
           fb = esp_camera_fb_get();
           // GET TIME USING NTP SERVER
           String timeNow = "";
-          if (Ping.ping("api.telegram.org", 1)) {
+          if (Ping.ping("api.telegram.org", 2)) {
             Serial.println("get");
             timeNow = getTimeNow();
           } else {
             timeNow = "0";
           }
-          //          String timeNow = "img_gen_mode";
           if (!fb) {
             Serial.println("Camera capture failed");
             delay(200);
@@ -266,30 +258,23 @@ void loop() {
           for (int j = 0; j < fb->len; j++) {
             vector.push_back(fb->buf[j]);
             if (j == fb->len - 1) {
-              //            Serial.println(vector.size());
               if (client.publish(topicDone, vector.data(), vector.size(), false)) {
                 Serial.println("All part of data published");
               }
               delay(10);
               vector.clear();
             }
-            //           if (j % 128 == 0 && j != 0)
             else if (j % 256 == 0 && j != 0) {
               if (client.publish(topicProgress, vector.data(), vector.size(), false)) {
-                //              Serial.println("Next part of data begin to publish");
               }
-              // delay(1);
               vector.clear();
             }
 
           }
           esp_camera_fb_return(fb);
-          // delay for each image taken
           delay(550);
         }
         delay(200);
-        //        pinMode(4, OUTPUT);
-        //        digitalWrite(4, LOW);
       }
       else {
         Serial.printf("Failed with state %d \n", client.state());
@@ -299,8 +284,5 @@ void loop() {
     }
     client.disconnect();
   }
-  Serial.println("Going to sleep now");
-  // go to sleep
-
   delay(250);
 }
