@@ -145,7 +145,7 @@ void setup_camera() {
   s->set_exposure_ctrl(s, 1); // 0 = disable , 1 = enable
   s->set_aec2(s, 0); // 0 = disable , 1 = enable
   s->set_ae_level(s, -1); // -2 to 2
-  s->set_aec_value(s, 8); // 0 to 1200
+  s->set_aec_value(s, 10); // 0 to 1200
   s->set_gain_ctrl(s, 1); // 0 = disable , 1 = enable
   s->set_agc_gain(s, 0); // 0 to 30
   // s->set_gainceiling(s, (gainceiling_t)5); // 0 to 6

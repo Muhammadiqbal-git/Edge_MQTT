@@ -147,6 +147,7 @@ def subscribe_mqtt(client: mqtt_client, ssd_model: tf.keras.Model):
             img.write(msg.payload)
             img.seek(0)
             edge_time_arv = time.strftime("%H:%M:%S", time.localtime())
+            print("time {}".format(edge_time_arv))
             print(img.getbuffer().nbytes)
             print(len(cam_time_sent))
             data = data_utils.single_custom_data_gen(img, 500, 500)
