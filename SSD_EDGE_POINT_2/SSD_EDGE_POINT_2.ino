@@ -52,7 +52,7 @@ const char *ssid = "Yfi";
 const char *pass = "qweasdzxc21";
 
 // MQTT BROKER
-const char *broker_address = "192.168.72.119";
+const char *broker_address = "192.168.170.119";
 const int port = 1883;
 const char *topicTime = "edge/cam/2/time";
 const char *topicProgress = "edge/cam/2/inprogress";
@@ -145,14 +145,14 @@ void setup_camera() {
   s->set_exposure_ctrl(s, 1); // 0 = disable , 1 = enable
   s->set_aec2(s, 0); // 0 = disable , 1 = enable
   s->set_ae_level(s, -1); // -2 to 2
-  s->set_aec_value(s, 10); // 0 to 1200
+  s->set_aec_value(s, 9); // 0 to 1200
   s->set_gain_ctrl(s, 1); // 0 = disable , 1 = enable
   s->set_agc_gain(s, 0); // 0 to 30
   // s->set_gainceiling(s, (gainceiling_t)5); // 0 to 6
   s->set_bpc(s, 1); // 0 = disable , 1 = enable
   s->set_wpc(s, 1); // 0 = disable , 1 = enable
   s->set_raw_gma(s, 1); // 0 = disable , 1 = enable (makes much lighter and noisy)
-  s->set_lenc(s, 0); // 0 = disable , 1 = enable
+  s->set_lenc(s, 1); // 0 = disable , 1 = enable
   s->set_hmirror(s, 0); // 0 = disable , 1 = enable
   s->set_vflip(s, 0); // 0 = disable , 1 = enable
   s->set_dcw(s, 0); // 0 = disable , 1 = enable

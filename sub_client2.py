@@ -22,7 +22,7 @@ topic = [
     (f"edge/cam/{ID}/inprogress", 0),
     (f"edge/cam/{ID}/done", 0),
 ]
-broker_address = "192.168.72.119"
+broker_address = "192.168.170.119"
 port = 1883
 
 os.environ[
@@ -38,11 +38,12 @@ base_url = "https://api.telegram.org/bot{}/sendPhoto".format(token)
 def model_init() -> tf.keras.Model:
     working_dir = os.getcwd()
     model_dir = os.path.join(working_dir, "model")
-    blob_name = "12_2023-11-02_mobilenet_v2_Id-88.h5"
+    blob_name = "22_2023-11-22_mobilenet_v2_ID-29.h5"
     model_path = os.path.join(model_dir, blob_name)
-    if not os.path.exists(model_dir):
+    if not os.path.exists(model_path):
+        if not os.path.exists(model_dir):
+            os.makedirs(model_dir)
         print("no model found, downloading from the internet ...")
-        os.makedirs(model_dir)
         initialize_app(credential=cred)
         bucket = storage.bucket(name="cloud-mqtt-detection.appspot.com")
         blob = bucket.blob(blob_name=blob_name)
@@ -172,7 +173,7 @@ def subscribe_mqtt(client: mqtt_client, ssd_model: tf.keras.Model):
                 print(parameter)
                 edge_time_sent = time.strftime("%H:%M:%S", time.localtime())
                 try:
-                    resp = requests.post(base_url, params=parameter, files=files, timeout=3)
+                    resp = requests.post(base_url, params=parameter, files=files, timeout=4)
                     print(resp.status_code)
                     if resp.status_code == 200:
                         telegram_time_arrival = time.strftime(
