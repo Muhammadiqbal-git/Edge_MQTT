@@ -1,0 +1,2 @@
+size(byte),cam_time_sent,edge_time_arv,edge_time_sent,telegram_time_arv
+21928,07:00:24,10:51:43,10:51:45,10:51:46

@@ -25,9 +25,11 @@ topic = [
 broker_address = "10.78.8.17"
 port = 1883
 
+working_dir = os.getcwd()
+keys_dir = os.path.join(working_dir, "cloud-mqtt-detection-firebase-adminsdk-s4wo7-fe9e91fb67.json")
 os.environ[
     "GOOGLE_APPLICATION_CREDENTIALS"
-] = "d:\keys\cloud-mqtt-detection-firebase-adminsdk-s4wo7-fe9e91fb67.json"  # add your Credentials keys path to sys environtment
+] = keys_dir # add your Credentials keys path to sys environtment
 
 cred = credentials.Certificate(os.getenv("GOOGLE_APPLICATION_CREDENTIALS"))
 with open("telegram_key.txt") as f:
