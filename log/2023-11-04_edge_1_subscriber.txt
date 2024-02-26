@@ -1,2 +1,0 @@
-size(byte),time_sent,time_arrive,time_edge_sent
-10,18:00:01,17:05:49,17:05:52

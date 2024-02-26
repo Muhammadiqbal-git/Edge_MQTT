@@ -22,7 +22,7 @@ topic = [
     (f"edge/cam/{ID}/inprogress", 0),
     (f"edge/cam/{ID}/done", 0),
 ]
-broker_address = "192.168.121.119"
+broker_address = "10.78.8.17"
 port = 1883
 
 os.environ[

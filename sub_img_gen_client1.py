@@ -7,7 +7,7 @@ from PIL import Image, ImageFile
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-broker_address = '192.168.121.119'
+broker_address = '10.78.8.17'
 port = 1883
 topic = [('edge/cam/1/time', 0), ('edge/cam/1/inprogress', 0), ('edge/cam/1/done', 0)]
 

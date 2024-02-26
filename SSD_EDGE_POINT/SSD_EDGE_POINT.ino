@@ -48,11 +48,11 @@ const char* NTPSERVER = "pool.ntp.org";
 const int dayOffset_sec = 3600;
 
 // WIFI
-const char *ssid = "Yfi";
-const char *pass = "qweasdzxc21";
+const char *ssid = "untan";
+const char *pass = "";
 
 // MQTT BROKER
-const char *broker_address = "192.168.121.119";
+const char *broker_address = "10.78.8.17";
 const int port = 1883;
 const char *topicTime = "edge/cam/1/time";
 const char *topicProgress = "edge/cam/1/inprogress";

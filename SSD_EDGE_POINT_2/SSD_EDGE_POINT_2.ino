@@ -52,7 +52,7 @@ const char *ssid = "Yfi";
 const char *pass = "qweasdzxc21";
 
 // MQTT BROKER
-const char *broker_address = "192.168.121.119";
+const char *broker_address = "192.168.196.119";
 const int port = 1883;
 const char *topicTime = "edge/cam/2/time";
 const char *topicProgress = "edge/cam/2/inprogress";
