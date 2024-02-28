@@ -22,7 +22,7 @@ topic = [
     (f"edge/cam/{ID}/inprogress", 0),
     (f"edge/cam/{ID}/done", 0),
 ]
-broker_address = "10.78.8.17"
+broker_address = "serveo.net"
 port = 1883
 
 working_dir = os.getcwd()
@@ -170,7 +170,7 @@ def subscribe_mqtt(client: mqtt_client, ssd_model: tf.keras.Model):
                 # id of channel telegram
                 parameter["chat_id"] = "-1001974152494"
                 parameter["caption"] = "{}\nLocation: CAM-{}".format(
-                    cam_time_sent[0], ID)
+                    edge_time_arv, ID)
                 print(base_url)
                 print(parameter)
                 edge_time_sent = time.strftime("%H:%M:%S", time.localtime())

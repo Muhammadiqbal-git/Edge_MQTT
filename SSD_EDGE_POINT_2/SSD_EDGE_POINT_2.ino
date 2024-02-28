@@ -52,11 +52,11 @@ const char *ssid = "Yfi";
 const char *pass = "qweasdzxc21";
 
 // MQTT BROKER
-const char *broker_address = "192.168.196.119";
+const char *broker_address = "broker.hivemq.com";
 const int port = 1883;
-const char *topicTime = "edge/cam/2/time";
-const char *topicProgress = "edge/cam/2/inprogress";
-const char *topicDone = "edge/cam/2/done";
+const char *topicTime = "edge/cam/1/time";
+const char *topicProgress = "edge/cam/1/inprogress";
+const char *topicDone = "edge/cam/1/done";
 
 
 WiFiClient espClient;

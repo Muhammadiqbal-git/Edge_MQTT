@@ -52,7 +52,7 @@ const char *ssid = "untan";
 const char *pass = "";
 
 // MQTT BROKER
-const char *broker_address = "10.78.8.17";
+const char *broker_address = "serveo.net";
 const int port = 1883;
 const char *topicTime = "edge/cam/1/time";
 const char *topicProgress = "edge/cam/1/inprogress";
@@ -258,6 +258,7 @@ void loop() {
           for (int j = 0; j < fb->len; j++) {
             vector.push_back(fb->buf[j]);
             if (j == fb->len - 1) {
+              Serial.println();
               if (client.publish(topicDone, vector.data(), vector.size(), false)) {
                 Serial.println("All part of data published");
               }
@@ -266,6 +267,7 @@ void loop() {
             }
             else if (j % 256 == 0 && j != 0) {
               if (client.publish(topicProgress, vector.data(), vector.size(), false)) {
+                Serial.print(".");
               }
               vector.clear();
             }
